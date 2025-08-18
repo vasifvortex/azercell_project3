@@ -1,7 +1,6 @@
 import base64
 import io
 import json
-
 import requests
 import streamlit as st
 from PIL import Image
@@ -13,43 +12,33 @@ st.set_page_config(
     page_title="One Piece Chatbot ▬▬ι═══════ﺤ", page_icon="🏴‍☠️", layout="centered"
 )
 
+# ---------------------------
+# Background image
+# ---------------------------
 image_path = "assets/one-piece-luffys-straw-hat-desktop-wallpaper-preview (1).jpg"
 image = Image.open(image_path)
-
-# Convert to base64
 img_bytes = io.BytesIO()
 image.save(img_bytes, format="JPEG")
-img_bytes = img_bytes.getvalue()
-encoded_bg = base64.b64encode(img_bytes).decode()
-
-# ---------------------------
-# Default background image (direct URL to image)
-# ---------------------------
+encoded_bg = base64.b64encode(img_bytes.getvalue()).decode()
 default_background = f"data:image/jpeg;base64,{encoded_bg}"
 
-# ---------------------------
-# Upload background image
-# ---------------------------
+# Upload background
 st.sidebar.title("Background Image")
 uploaded_file = st.sidebar.file_uploader(
     "Upload your background (jpg/png)", type=["jpg", "jpeg", "png"]
 )
-
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.sidebar.image(image, caption="Uploaded Background", use_container_width=True)
-
     img_bytes = io.BytesIO()
     image.save(img_bytes, format="PNG")
-    img_bytes = img_bytes.getvalue()
-    encoded_bg = base64.b64encode(img_bytes).decode()
-
+    encoded_bg = base64.b64encode(img_bytes.getvalue()).decode()
     bg_url = f"data:image/png;base64,{encoded_bg}"
 else:
     bg_url = default_background
 
 # ---------------------------
-# Apply background CSS
+# Apply CSS
 # ---------------------------
 st.markdown(
     f"""
@@ -77,6 +66,10 @@ st.markdown(
         margin: 5px 0px;
         font-weight: bold;
     }}
+    .stTextInput label {{
+        color: white;
+        font-weight: bold;
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -98,9 +91,12 @@ st.write(
 # Initialize session state
 # ---------------------------
 if "all_chats" not in st.session_state:
-    st.session_state.all_chats = [[]]  # Start with one empty chat
+    st.session_state.all_chats = [[]]
 if "current_chat_index" not in st.session_state:
     st.session_state.current_chat_index = 0
+
+# System message (Luffy personality)
+system_prompt = "You are an anime character from One Piece, namely Monkey D. Luffy. Respond in a pirate way, full of energy, adventure, and mischief. Always stay in character as Luffy."
 
 
 # ---------------------------
@@ -124,9 +120,7 @@ def new_chat():
 def delete_current_chat():
     if st.session_state.all_chats:
         st.session_state.all_chats.pop(st.session_state.current_chat_index)
-        st.session_state.current_chat_index = max(
-            0, len(st.session_state.all_chats) - 1
-        )
+        st.current_chat_index = max(0, len(st.session_state.all_chats) - 1)
         if not st.session_state.all_chats:
             st.session_state.all_chats.append([])
         st.rerun()
@@ -165,7 +159,7 @@ if current_chat:
             )
         else:
             st.markdown(
-                f"<div class='chat-bot'>Bot: {chat['message']}</div>",
+                f"<div class='chat-bot'>Luffy: {chat['message']}</div>",
                 unsafe_allow_html=True,
             )
 else:
@@ -174,19 +168,6 @@ else:
 # ---------------------------
 # Chat input
 # ---------------------------
-
-st.markdown(
-    """
-    <style>
-    .stTextInput label {
-        color: white;
-        font-weight: bold;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 user_input = st.text_input("Your question:")
 
 if st.button("Send") and user_input:
@@ -196,18 +177,25 @@ if st.button("Send") and user_input:
         response = requests.post(
             "http://backend:8000/chat",
             headers={"Content-Type": "application/json"},
-            data=json.dumps({"query": user_input}),
+            data=json.dumps({"query": user_input, "system": system_prompt}),
         )
 
+        bot_response = "⚠️ Bot gave an empty response."
         if response.status_code == 200:
             resp_json = response.json()
-            response_str = resp_json.get("response", "{}")
-            bot_response = json.loads(response_str)["content"][0]["text"]
-            add_message("bot", bot_response)
+            if "response" in resp_json and resp_json["response"]:
+                try:
+                    parsed = json.loads(resp_json["response"])
+                    if "content" in parsed and parsed["content"]:
+                        bot_response = parsed["content"][0].get("text", bot_response)
+                except json.JSONDecodeError:
+                    bot_response = f"⚠️ Response not valid JSON: {resp_json['response']}"
         else:
-            add_message("bot", f"Error {response.status_code}: {response.text}")
+            bot_response = f"❌ Error {response.status_code}: {response.text}"
+
+        add_message("bot", bot_response)
 
     except requests.exceptions.RequestException as e:
-        add_message("bot", f"Failed to connect to backend: {e}")
+        add_message("bot", f"🚫 Failed to connect to backend: {e}")
 
     st.rerun()

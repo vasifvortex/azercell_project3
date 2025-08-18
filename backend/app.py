@@ -35,7 +35,7 @@ app = FastAPI(
 # ---------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # or restrict to frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,6 +57,7 @@ def health() -> Dict[str, Any]:
 # ---------------------------
 class ChatRequest(BaseModel):
     query: str
+    system: str | None = None  # optional system prompt
 
 
 @app.post("/chat")
@@ -70,16 +71,19 @@ def chat(req: ChatRequest) -> Dict[str, Any]:
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
         )
 
+        # Build messages list (without system role)
+        messages = [{"role": "user", "content": [{"type": "text", "text": req.query}]}]
+
         # Request body for Claude model
         body = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 300,
             "temperature": 0.7,
-            "messages": [
-                {"role": "user", "content": [{"type": "text", "text": req.query}]}
-            ],
+            "system": req.system,  # <-- top-level system
+            "messages": messages,
         }
 
+        # Invoke model
         response = bedrock.invoke_model(
             modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             body=str(body).replace("'", '"'),  # JSON string
