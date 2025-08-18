@@ -1,5 +1,5 @@
 version: "3.8"
-      
+
 services:
   backend:
     build:
@@ -15,8 +15,11 @@ services:
       - backend_venv:/app/.venv
     ports:
       - "8000:8000"
-    env_file:
-      - .env 
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+
   frontend:
     build:
       context: .
@@ -31,7 +34,6 @@ services:
       - frontend_venv:/app/.venv
     ports:
       - "8501:8501"
-
 
 volumes:
   backend_venv:
