@@ -170,32 +170,47 @@ else:
 # ---------------------------
 user_input = st.text_input("Your question:")
 
-if st.button("Send") and user_input:
-    add_message("user", user_input)
+col1, col2 = st.columns([3, 1])
 
-    try:
-        response = requests.post(
-            "http://backend:8000/chat",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps({"query": user_input, "system": system_prompt}),
-        )
+with col1:
+    if st.button("Send") and user_input:
+        add_message("user", user_input)
+        try:
+            response = requests.post(
+                "http://backend:8000/chat",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps({"query": user_input, "system": system_prompt}),
+            )
 
-        bot_response = "⚠️ Bot gave an empty response."
-        if response.status_code == 200:
-            resp_json = response.json()
-            if "response" in resp_json and resp_json["response"]:
-                try:
-                    parsed = json.loads(resp_json["response"])
-                    if "content" in parsed and parsed["content"]:
-                        bot_response = parsed["content"][0].get("text", bot_response)
-                except json.JSONDecodeError:
-                    bot_response = f"⚠️ Response not valid JSON: {resp_json['response']}"
-        else:
-            bot_response = f"❌ Error {response.status_code}: {response.text}"
+            bot_response = "⚠️ Bot gave an empty response."
+            if response.status_code == 200:
+                resp_json = response.json()
+                if "response" in resp_json and resp_json["response"]:
+                    try:
+                        parsed = json.loads(resp_json["response"])
+                        if "content" in parsed and parsed["content"]:
+                            bot_response = parsed["content"][0].get(
+                                "text", bot_response
+                            )
+                    except json.JSONDecodeError:
+                        bot_response = (
+                            f"⚠️ Response not valid JSON: {resp_json['response']}"
+                        )
+            else:
+                bot_response = f"❌ Error {response.status_code}: {response.text}"
 
-        add_message("bot", bot_response)
+            add_message("bot", bot_response)
 
-    except requests.exceptions.RequestException as e:
-        add_message("bot", f"🚫 Failed to connect to backend: {e}")
+        except requests.exceptions.RequestException as e:
+            add_message("bot", f"🚫 Failed to connect to backend: {e}")
 
-    st.rerun()
+        st.rerun()
+
+# ---------------------------
+# MP3 Player
+# ---------------------------
+with col2:
+    play_song = st.button("▶️Play Brook's Song")
+if play_song:
+    audio_file = open("assets/song.mp3", "rb")
+    st.audio(audio_file.read(), format="audio/mp3")
