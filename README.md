@@ -1,6 +1,6 @@
 # MLOps Example
 
-![Build Status](https://github.com/Elkhn/MLOps_example/actions/workflows/ci-build.yaml/badge.svg)
+![Build Status](https://github.com/vasifvortex/azercell_project3/actions/workflows/ci-build.yaml/badge.svg)
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![3.12](https://img.shields.io/badge/Python-3.12-green.svg)](https://shields.io/)
@@ -9,7 +9,7 @@
 
 ## Overview of the Project
 
-This repository demonstrates a simple MLOps pipeline example created for the DataMinds bootcamp. It showcases how to build, dockerize, and deploy a machine learning application with service communication, along with implementing CI/CD workflows using GitHub Actions and self-hosted runners.
+This repository demonstrates how to build, dockerize, and deploy a machine learning application, RAG, with service communication, along with implementing CI/CD workflows using GitHub Actions and self-hosted runners.
 
 ## Architecture
 
@@ -29,8 +29,8 @@ This repository demonstrates a simple MLOps pipeline example created for the Dat
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Elkhn/MLOps_example.git
-   cd MLOps_example
+   git clone https://github.com/vasifvortex/azercell_project3.git
+   cd azercell_project3
    ```
 
 2. **Launch services with Docker Compose**
@@ -51,7 +51,7 @@ This repository demonstrates a simple MLOps pipeline example created for the Dat
 ## Project Structure
 
 ```
-MLOps_example/
+azercell_project3/
 ├── backend/              # FastAPI application
 ├── frontend/             # Streamlit application
 ├── docker-compose.yml    # Service orchestration
@@ -91,8 +91,3 @@ MLOps_example/
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](https://opensource.org/licenses/Apache-2.0) file for details.
 
----
-
-*This is a educational example project demonstrating MLOps best practices. For production use, consider additional security, monitoring, and scalability measures.*
-
-**Made with ❤️ for DataMinds'25 students**
