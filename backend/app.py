@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
@@ -7,6 +8,7 @@ import boto3
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # ---------------------------
@@ -41,7 +43,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ---------------------------
 # Health endpoint
 # ---------------------------
@@ -53,44 +54,67 @@ def health() -> Dict[str, Any]:
 
 
 # ---------------------------
-# Chat endpoint
+# Chat endpoint (streaming)
 # ---------------------------
 class ChatRequest(BaseModel):
     query: str
     system: str | None = None  # optional system prompt
 
 
+def add_user_message(messages: list, text: str):
+    messages.append({"role": "user", "content": [{"type": "text", "text": text}]})
+
+
+def create_body_json(messages: list, system: str | None = None) -> str:
+    body = {
+        "anthropic_version": "bedrock-2023-05-31",
+        "max_tokens": 300,
+        "temperature": 0.7,
+        "system": system,
+        "messages": messages,
+    }
+    return json.dumps(body)
+
+
 @app.post("/chat")
-def chat(req: ChatRequest) -> Dict[str, Any]:
+def chat(req: ChatRequest):
     try:
-        # Initialize Bedrock client
-        bedrock = boto3.client(
+        client = boto3.client(
             "bedrock-runtime",
             region_name=os.getenv("AWS_REGION"),
             aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
         )
 
-        # Build messages list (without system role)
-        messages = [{"role": "user", "content": [{"type": "text", "text": req.query}]}]
+        messages = []
+        add_user_message(messages, req.query)
+        body_json = create_body_json(messages, req.system)
 
-        # Request body for Claude model
-        body = {
-            "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 300,
-            "temperature": 0.7,
-            "system": req.system,  # <-- top-level system
-            "messages": messages,
-        }
-
-        # Invoke model
-        response = bedrock.invoke_model(
+        stream = client.invoke_model_with_response_stream(
             modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-            body=str(body).replace("'", '"'),  # JSON string
+            contentType="application/json",
+            accept="application/json",
+            body=body_json,
         )
 
-        model_response = response["body"].read().decode("utf-8")
-        return {"response": model_response}
+        stream_body = stream.get("body")
+
+        def event_generator():
+            try:
+                for event in stream_body:
+                    stream_chunk = event.get("chunk")
+                    if not stream_chunk:
+                        continue
+                    decoded = json.loads(stream_chunk.get("bytes").decode("utf-8"))
+                    delta = decoded.get("delta", {})
+                    text = delta.get("text", "")
+                    if text:
+                        yield text
+            except Exception as e:
+                logger.error(f"Streaming error: {e}")
+                yield f"[ERROR]: {str(e)}"
+
+        return StreamingResponse(event_generator(), media_type="text/plain")
 
     except ClientError as e:
         logger.error(f"AWS ClientError: {e}")
