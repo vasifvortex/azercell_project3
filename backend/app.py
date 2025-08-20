@@ -52,33 +52,66 @@ def health() -> Dict[str, Any]:
     baku_time = datetime.now(BAKU_TZ).isoformat()
     return {"status": "healthy", "utc_time": utc_time, "baku_time": baku_time}
 
-
 # ---------------------------
-# Chat endpoint (streaming)
+# Chat request model
 # ---------------------------
 class ChatRequest(BaseModel):
     query: str
     system: str | None = None  # optional system prompt
 
+# ---------------------------
+# Bedrock Knowledge Base client
+# ---------------------------
+bedrock_kb = boto3.client(
+    "bedrock-agent-runtime",
+    region_name=os.getenv("AWS_REGION"),
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+)
+knowledge_base_id = "JGMPKF6VEI"
 
+def create_request(knowledge_base_id: str, query: str) -> dict:
+    """Build the Bedrock KB retrieval request"""
+    return {
+        "knowledgeBaseId": knowledge_base_id,
+        "retrievalQuery": {"text": query},
+        "retrievalConfiguration": {
+            "vectorSearchConfiguration": {"numberOfResults": 3}
+        }
+    }
+
+def get_knowledge_base_data(query: str) -> str:
+    """Query Bedrock KB and return concatenated results"""
+    request_body = create_request(knowledge_base_id, query)
+    response = bedrock_kb.retrieve(**request_body)
+    results = []
+    for item in response.get("results", []):
+        content = item.get("documentContent", "")
+        results.append(content)
+    return "\n".join(results) if results else ""
+
+# ---------------------------
+# Helper functions
+# ---------------------------
 def add_user_message(messages: list, text: str):
     messages.append({"role": "user", "content": [{"type": "text", "text": text}]})
 
-
 def create_body_json(messages: list, system: str | None = None) -> str:
-    body = {
+    return json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 300,
         "temperature": 0.7,
         "system": system,
         "messages": messages,
-    }
-    return json.dumps(body)
+    })
 
-
+# ---------------------------
+# Chat endpoint
+# ---------------------------
 @app.post("/chat")
 def chat(req: ChatRequest):
     try:
+        # Bedrock model client
         client = boto3.client(
             "bedrock-runtime",
             region_name=os.getenv("AWS_REGION"),
@@ -86,10 +119,15 @@ def chat(req: ChatRequest):
             aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
         )
 
+        # Retrieve knowledge from KB
+        kb_text = get_knowledge_base_data(req.query)
         messages = []
-        add_user_message(messages, req.query)
+        combined_query = f"{req.query}\n\n[KnowledgeBase]: {kb_text}" if kb_text else req.query
+        add_user_message(messages, combined_query)
+
         body_json = create_body_json(messages, req.system)
 
+        # Invoke model with streaming response
         stream = client.invoke_model_with_response_stream(
             modelId="us.anthropic.claude-3-7-sonnet-20250219-v1:0",
             contentType="application/json",
@@ -102,10 +140,10 @@ def chat(req: ChatRequest):
         def event_generator():
             try:
                 for event in stream_body:
-                    stream_chunk = event.get("chunk")
-                    if not stream_chunk:
+                    chunk = event.get("chunk")
+                    if not chunk:
                         continue
-                    decoded = json.loads(stream_chunk.get("bytes").decode("utf-8"))
+                    decoded = json.loads(chunk.get("bytes").decode("utf-8"))
                     delta = decoded.get("delta", {})
                     text = delta.get("text", "")
                     if text:
