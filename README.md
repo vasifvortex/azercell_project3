@@ -1,4 +1,4 @@
-# MLOps Example
+# Azercelli Luffy
 
 ![Build Status](https://github.com/vasifvortex/azercell_project3/actions/workflows/ci-build.yaml/badge.svg)
 
@@ -86,7 +86,8 @@ azercell_project3/
 - **CI/CD Pipeline**: Automated testing and deployment using GitHub Actions
 - **Self-hosted Runner**: Shows how to set up and use self-hosted runners for deployment
 - **Learning Playground**: Intended for exploring and practicing MLOps concepts
-
+## LINK
+   http://100.27.158.24:8501/
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](https://opensource.org/licenses/Apache-2.0) file for details.
