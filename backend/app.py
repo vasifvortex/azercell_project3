@@ -160,3 +160,10 @@ def chat(req: ChatRequest):
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return {"error": f"Unexpected: {str(e)}"}
+# ---------------------------
+# Knowledge-base endpoint
+# ---------------------------
+@app.post("/knowledge-base")
+def knowledge_base(query: dict):
+    text = get_knowledge_base_data(query.get("query", ""))
+    return {"results": [{"documentContent": t} for t in text.split("\n") if t]}

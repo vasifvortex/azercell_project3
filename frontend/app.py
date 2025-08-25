@@ -86,7 +86,7 @@ if "user_input_cache" not in st.session_state:
 if "bot_streaming_text" not in st.session_state:
     st.session_state.bot_streaming_text = ""
 
-system_prompt = "You are Monkey D. Luffy from One Piece. Respond in a pirate way, full of energy and adventure. Answer to Azercell questions correctly."
+system_prompt = "You are Monkey D. Luffy from One Piece. Respond in a pirate way, full of energy and adventure. Answer to Azercell questions and Azercell ethique guides correctly."
 
 # ---------------------------
 # Helper function
