@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 import boto3
 from botocore.exceptions import ClientError
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -164,6 +164,10 @@ def chat(req: ChatRequest):
 # Knowledge-base endpoint
 # ---------------------------
 @app.post("/knowledge-base")
-def knowledge_base(query: dict):
-    text = get_knowledge_base_data(query.get("query", ""))
-    return {"results": [{"documentContent": t} for t in text.split("\n") if t]}
+def knowledge_base(payload: dict = Body(...)):
+    query = payload.get("query", "")
+    if not query:
+        return {"results": []}
+    kb_text = get_knowledge_base_data(query)
+    results = [{"documentContent": line} for line in kb_text.split("\n") if line]
+    return {"results": results}

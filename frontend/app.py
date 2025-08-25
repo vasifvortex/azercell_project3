@@ -150,7 +150,7 @@ with col1:
         try:
             # 1️⃣ Retrieve knowledge base data
             kb_resp = requests.post(
-                "http://backend:8000/knowledge-base",
+                "http://100.27.158.24:8000/knowledge-base",
                 headers={"Content-Type": "application/json"},
                 data=json.dumps({"query": user_input}),
             )
